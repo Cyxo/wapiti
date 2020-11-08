@@ -34,6 +34,7 @@ import pickle
 import math
 import functools
 from time import sleep
+from importlib import import_module
 
 # Third-parties
 import requests
@@ -48,10 +49,13 @@ from bs4.element import Comment
 
 # Internal libraries
 from wapitiCore.language.language import _
+from wapitiCore.language.logger import ConsoleLogger
 from wapitiCore import parser_name
 from wapitiCore.net import web
 from wapitiCore.net import swf
 from wapitiCore.net import lamejs
+from wapitiCore.net.sqlite_persister import SqlitePersister
+from wapitiCore.passive import passive
 
 disable_warnings()
 warnings.filterwarnings(action='ignore', category=UserWarning, module='bs4')
@@ -1407,8 +1411,10 @@ class Crawler:
 
 
 class Explorer:
-    def __init__(self, crawler_instance: Crawler):
+    def __init__(self, crawler_instance: Crawler, persister: SqlitePersister):
         self._crawler = crawler_instance
+        self.persister = persister
+        self.logger = ConsoleLogger()
         self._max_depth = 20
         self._max_page_size = MAX_PAGE_SIZE
         self._log = True
@@ -1694,6 +1700,14 @@ class Explorer:
 
                         if form not in excluded_urls and form not in to_explore:
                             to_explore.append(form)
+
+                for mod_name in passive.modules:
+                    passive_module = import_module("wapitiCore.passive." + mod_name)
+                    instance = getattr(passive_module, mod_name)(page, self.persister, self.logger)
+                    generator = instance.analyse()
+
+                    for result in generator:
+                        print("Result:", result)
 
             for url in swf_links + js_links:
                 if url:

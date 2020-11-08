@@ -300,7 +300,7 @@ class Wapiti:
 
         stopped = False
 
-        explorer = crawler.Explorer(self.crawler)
+        explorer = crawler.Explorer(self.crawler, self.persister)
         explorer.max_depth = self._max_depth
         explorer.max_files_per_dir = self._max_files_per_dir
         explorer.max_requests_per_depth = self._max_links_per_page
