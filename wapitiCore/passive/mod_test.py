@@ -5,8 +5,10 @@ class mod_test(Analysis):
 
     name = "test"
 
-    def __init__(self, page, persister, logger):
-        Analysis.__init__(self, page, persister, logger)
+    def __init__(self, persister, logger):
+        Analysis.__init__(self, persister, logger)
 
-    def analyse(self):
-        yield "Testing passive module"
+    def analyse(self, page):
+        if page.base_url not in self.pages:
+            self.pages.append(page.base_url)
+            yield "Testing passive module on page {}".format(page.title)

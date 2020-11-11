@@ -125,10 +125,9 @@ class Analysis:
     # The priority of the module, from 0 (first) to 10 (last). Default is 5
     PRIORITY = 5
 
-    def __init__(self, page, persister, logger):
+    def __init__(self, persister, logger):
         super().__init__()
         self._session_id = "".join([random.choice("0123456789abcdefghjijklmnopqrstuvwxyz") for __ in range(0, 6)])
-        self.page = page
         self.persister = persister
         self.add_vuln = persister.add_vulnerability
         self.add_anom = persister.add_anomaly
@@ -172,7 +171,7 @@ class Analysis:
     def external_endpoint(self):
         return self.options.get("external_endpoint", "http://wapiti3.ovh")
 
-    def analyse(self):
+    def analyse(self, page):
         raise NotImplementedError("Override me bro")
 
     def does_timeout(self, request):
@@ -186,73 +185,73 @@ class Analysis:
 
 
 
-if __name__ == "__main__":
-
-    mutator = Mutator(payloads=[("INJECT", Flags()), ("ATTACK", Flags())], qs_inject=True, max_queries_per_pattern=16)
-    res1 = Request(
-        "http://httpbin.org/post?var1=a&var2=b",
-        post_params=[['post1', 'c'], ['post2', 'd']]
-    )
-
-    res2 = Request(
-        "http://httpbin.org/post?var1=a&var2=z",
-        post_params=[['post1', 'c'], ['post2', 'd']]
-    )
-
-    res3 = Request(
-        "http://httpbin.org/get?login=admin&password=letmein",
-    )
-
-    assert res1.hash_params == res2.hash_params
-
-    for evil_request, param_name, payload, flags in mutator.mutate(res1):
-        print(evil_request)
-        print(flags)
-
-    print('')
-    print("#"*50)
-    print('')
-
-    for evil_request, param_name, payload, flags in mutator.mutate(res2):
-        print(evil_request)
-
-    print('')
-    print("#"*50)
-    print('')
-
-    def iterator():
-        yield "abc", Flags()
-        yield "def", Flags()
-
-    mutator = Mutator(payloads=iterator, qs_inject=True, max_queries_per_pattern=16)
-    for evil_request, param_name, payload, flags in mutator.mutate(res3):
-        print(evil_request)
-
-    print('')
-    print("#"*50)
-    print('')
-
-    def random_string():
-        """Create a random unique ID that will be used to test injection."""
-        # doesn't uppercase letters as BeautifulSoup make some data lowercase
-        return "w" + "".join([random.choice("0123456789abcdefghjijklmnopqrstuvwxyz") for __ in range(0, 9)]), Flags()
-
-    mutator = Mutator(payloads=random_string, qs_inject=True, max_queries_per_pattern=16)
-    for evil_request, param_name, payload, flags in mutator.mutate(res3):
-        print(evil_request)
-        print("Payload is", payload)
-
-    mutator = Mutator(
-        methods="G",
-        payloads=[("INJECT", Flags()), ("ATTACK", Flags())],
-        qs_inject=True,
-        parameters=["var1"]
-    )
-
-    assert len(list(mutator.mutate(res1))) == 2
-
-    f1 = Flags()
-    f2 = Flags()
-    assert f1 == f2
-    assert f1.with_section("abcd") == f2.with_section("abcd")
-    assert f1 != f1.with_section("abcd")
+# if __name__ == "__main__":
+#
+#     mutator = Mutator(payloads=[("INJECT", Flags()), ("ATTACK", Flags())], qs_inject=True, max_queries_per_pattern=16)
+#     res1 = Request(
+#         "http://httpbin.org/post?var1=a&var2=b",
+#         post_params=[['post1', 'c'], ['post2', 'd']]
+#     )
+#
+#     res2 = Request(
+#         "http://httpbin.org/post?var1=a&var2=z",
+#         post_params=[['post1', 'c'], ['post2', 'd']]
+#     )
+#
+#     res3 = Request(
+#         "http://httpbin.org/get?login=admin&password=letmein",
+#     )
+#
+#     assert res1.hash_params == res2.hash_params
+#
+#     for evil_request, param_name, payload, flags in mutator.mutate(res1):
+#         print(evil_request)
+#         print(flags)
+#
+#     print('')
+#     print("#"*50)
+#     print('')
+#
+#     for evil_request, param_name, payload, flags in mutator.mutate(res2):
+#         print(evil_request)
+#
+#     print('')
+#     print("#"*50)
+#     print('')
+#
+#     def iterator():
+#         yield "abc", Flags()
+#         yield "def", Flags()
+#
+#     mutator = Mutator(payloads=iterator, qs_inject=True, max_queries_per_pattern=16)
+#     for evil_request, param_name, payload, flags in mutator.mutate(res3):
+#         print(evil_request)
+#
+#     print('')
+#     print("#"*50)
+#     print('')
+#
+#     def random_string():
+#         """Create a random unique ID that will be used to test injection."""
+#         # doesn't uppercase letters as BeautifulSoup make some data lowercase
+#         return "w" + "".join([random.choice("0123456789abcdefghjijklmnopqrstuvwxyz") for __ in range(0, 9)]), Flags()
+#
+#     mutator = Mutator(payloads=random_string, qs_inject=True, max_queries_per_pattern=16)
+#     for evil_request, param_name, payload, flags in mutator.mutate(res3):
+#         print(evil_request)
+#         print("Payload is", payload)
+#
+#     mutator = Mutator(
+#         methods="G",
+#         payloads=[("INJECT", Flags()), ("ATTACK", Flags())],
+#         qs_inject=True,
+#         parameters=["var1"]
+#     )
+#
+#     assert len(list(mutator.mutate(res1))) == 2
+#
+#     f1 = Flags()
+#     f2 = Flags()
+#     assert f1 == f2
+#     assert f1.with_section("abcd") == f2.with_section("abcd")
+#     assert f1 != f1.with_section("abcd")

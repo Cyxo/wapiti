@@ -1413,8 +1413,8 @@ class Crawler:
 class Explorer:
     def __init__(self, crawler_instance: Crawler, persister: SqlitePersister):
         self._crawler = crawler_instance
-        self.persister = persister
-        self.logger = ConsoleLogger()
+        self._persister = persister
+        self._logger = ConsoleLogger()
         self._max_depth = 20
         self._max_page_size = MAX_PAGE_SIZE
         self._log = True
@@ -1426,6 +1426,13 @@ class Explorer:
         self._file_counts = defaultdict(int)
         self._pattern_counts = defaultdict(int)
         self._hostnames = set()
+
+        self._passive_modules = []
+        for mod_name in passive.modules:
+            passive_module = import_module("wapitiCore.passive." + mod_name)
+            instance = getattr(passive_module, mod_name)(self._persister, self._logger)
+            self._passive_modules.append(instance)
+            instance.log_green(_("[*] Loading passive module {0}"), instance.name)
 
     @property
     def max_depth(self) -> int:
@@ -1701,10 +1708,8 @@ class Explorer:
                         if form not in excluded_urls and form not in to_explore:
                             to_explore.append(form)
 
-                for mod_name in passive.modules:
-                    passive_module = import_module("wapitiCore.passive." + mod_name)
-                    instance = getattr(passive_module, mod_name)(page, self.persister, self.logger)
-                    generator = instance.analyse()
+                for instance in self._passive_modules:
+                    generator = instance.analyse(page)
 
                     for result in generator:
                         print("Result:", result)
