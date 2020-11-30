@@ -11,4 +11,4 @@ class mod_test(Analysis):
     def analyse(self, page):
         if page.base_url not in self.pages:
             self.pages.append(page.base_url)
-            yield "Testing passive module on page {}".format(page.title)
+            yield "Testing passive module on page {}".format(page.url)

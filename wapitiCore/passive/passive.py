@@ -33,7 +33,8 @@ from wapitiCore.net.web import Request
 
 
 modules = [
-    "mod_test"
+    "mod_test",
+    "mod_osint"
 ]
 
 COMMON_ANNOYING_PARAMETERS = (

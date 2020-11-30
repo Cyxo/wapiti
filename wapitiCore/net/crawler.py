@@ -34,7 +34,6 @@ import pickle
 import math
 import functools
 from time import sleep
-from importlib import import_module
 
 # Third-parties
 import requests
@@ -49,13 +48,10 @@ from bs4.element import Comment
 
 # Internal libraries
 from wapitiCore.language.language import _
-from wapitiCore.language.logger import ConsoleLogger
 from wapitiCore import parser_name
 from wapitiCore.net import web
 from wapitiCore.net import swf
 from wapitiCore.net import lamejs
-from wapitiCore.net.sqlite_persister import SqlitePersister
-from wapitiCore.passive import passive
 
 disable_warnings()
 warnings.filterwarnings(action='ignore', category=UserWarning, module='bs4')
@@ -1411,10 +1407,8 @@ class Crawler:
 
 
 class Explorer:
-    def __init__(self, crawler_instance: Crawler, persister: SqlitePersister):
+    def __init__(self, crawler_instance: Crawler):
         self._crawler = crawler_instance
-        self._persister = persister
-        self._logger = ConsoleLogger()
         self._max_depth = 20
         self._max_page_size = MAX_PAGE_SIZE
         self._log = True
@@ -1426,13 +1420,6 @@ class Explorer:
         self._file_counts = defaultdict(int)
         self._pattern_counts = defaultdict(int)
         self._hostnames = set()
-
-        self._passive_modules = []
-        for mod_name in passive.modules:
-            passive_module = import_module("wapitiCore.passive." + mod_name)
-            instance = getattr(passive_module, mod_name)(self._persister, self._logger)
-            self._passive_modules.append(instance)
-            instance.log_green(_("[*] Loading passive module {0}"), instance.name)
 
     @property
     def max_depth(self) -> int:
@@ -1664,7 +1651,7 @@ class Explorer:
 
             # TODO: there's more situations where we would not want to attack the resource... must check this
             if not page.is_directory_redirection:
-                yield request
+                yield request, page
 
             if request.link_depth == self._max_depth:
                 # We are at the edge of the depth so next links will have depth + 1 so to need to parse the page.
@@ -1707,12 +1694,6 @@ class Explorer:
 
                         if form not in excluded_urls and form not in to_explore:
                             to_explore.append(form)
-
-                for instance in self._passive_modules:
-                    generator = instance.analyse(page)
-
-                    for result in generator:
-                        print("Result:", result)
 
             for url in swf_links + js_links:
                 if url:

@@ -49,6 +49,7 @@ from wapitiCore.net.sqlite_persister import SqlitePersister
 from wapitiCore.moon import phase
 
 from wapitiCore.attack import attack
+from wapitiCore.passive import passive
 
 logging.getLogger("requests.packages.urllib3.connectionpool").setLevel(logging.CRITICAL)
 logging.getLogger("urllib3.connectionpool").setLevel(logging.CRITICAL)
@@ -112,6 +113,7 @@ class Wapiti:
         self.urls = []
         self.forms = []
         self.attacks = []
+        self.passive = []
 
         self.color = 0
         self.verbose = 0
@@ -187,7 +189,8 @@ class Wapiti:
             )
 
     def _init_attacks(self):
-        self._init_report()
+        if self.report_gen is None:
+            self._init_report()
 
         logger = ConsoleLogger()
         if self.color:
@@ -275,6 +278,19 @@ class Wapiti:
                         if not found:
                             print(_("[!] Unable to find a module named {0}").format(module_name))
 
+    def _init_passive(self):
+        self._init_report()
+
+        logger = ConsoleLogger()
+        if self.color:
+            logger.color = True
+
+        for mod_name in passive.modules:
+            passive_module = import_module("wapitiCore.passive." + mod_name)
+            instance = getattr(passive_module, mod_name)(self.persister, logger)
+            self.passive.append(instance)
+            instance.log_green(_("[*] Loading passive module {0}"), instance.name)
+
     def update(self):
         """Update modules that implement an update method"""
         logger = ConsoleLogger()
@@ -291,6 +307,8 @@ class Wapiti:
 
     def browse(self):
         """Extract hyperlinks and forms from the webpages found on the website"""
+        self._init_passive()
+
         for resource in self.persister.get_to_browse():
             self._start_urls.append(resource)
         for resource in self.persister.get_links():
@@ -300,7 +318,7 @@ class Wapiti:
 
         stopped = False
 
-        explorer = crawler.Explorer(self.crawler, self.persister)
+        explorer = crawler.Explorer(self.crawler)
         explorer.max_depth = self._max_depth
         explorer.max_files_per_dir = self._max_files_per_dir
         explorer.max_requests_per_depth = self._max_links_per_page
@@ -313,12 +331,19 @@ class Wapiti:
         start = datetime.utcnow()
 
         try:
-            for resource in explorer.explore(self._start_urls, self._excluded_urls):
+            for resource, page in explorer.explore(self._start_urls, self._excluded_urls):
                 # Browsed URLs are saved one at a time
                 self.persister.add_request(resource)
                 if (datetime.utcnow() - start).total_seconds() > self._max_scan_time >= 1:
                     print(_("Max scan time was reached, stopping."))
                     break
+
+                for instance in self.passive:
+                    generator = instance.analyse(page)
+
+                    for result in generator:
+                        print("Result:", result)
+
         except KeyboardInterrupt:
             stopped = True
 
