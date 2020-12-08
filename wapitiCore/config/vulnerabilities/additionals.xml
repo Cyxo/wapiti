@@ -74,4 +74,14 @@
             </reference>
         </references>
     </additional>
+    <additional name="OSINT">
+        <description>Open Source Intelligence</description>
+        <solution text="Remove or hide sensitive data"/>
+        <references>
+            <reference>
+                <title><![CDATA[WSTG-INFO-02: An introduction to Open Source Intelligence]]></title>
+                <url>https://owasp.org/www-pdf-archive/OWASP-070317.pdf</url>
+            </reference>
+        </references>
+    </additional>
 </additionals>

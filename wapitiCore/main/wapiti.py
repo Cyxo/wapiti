@@ -281,6 +281,27 @@ class Wapiti:
     def _init_passive(self):
         self._init_report()
 
+        print(_("[*] Loading modules:"))
+        modules_list = sorted(module_name[4:] for module_name in passive.modules)
+        print("\t {0}".format(", ".join(modules_list)))
+
+        # Init output file for report (can be found in the attack() function too)
+        if not self.output_file:
+            if self.report_generator_type == "html":
+                self.output_file = self.COPY_REPORT_DIR
+            else:
+                filename = "{}_{}".format(
+                    self.server.replace(":", "_"),
+                    strftime("%m%d%Y_%H%M", self.report_gen.scan_date)
+                )
+                if self.report_generator_type == "txt":
+                    extension = ".txt"
+                elif self.report_generator_type == "json":
+                    extension = ".json"
+                else:
+                    extension = ".xml"
+                self.output_file = filename + extension
+
         logger = ConsoleLogger()
         if self.color:
             logger.color = True
@@ -342,7 +363,18 @@ class Wapiti:
                     generator = instance.analyse(page)
 
                     for result in generator:
-                        print("Result:", result)
+                        if result.type == "url":
+                            print("We need the Explorer to also browse {}".format(result.content))
+                        elif result.type == "additional":
+                            self.report_gen.add_additional(
+                                category=result.category,
+                                level=result.level,
+                                request=resource,
+                                parameter=result.page,
+                                info=result.content
+                            )
+                        else:
+                            print(result.content)
 
         except KeyboardInterrupt:
             stopped = True

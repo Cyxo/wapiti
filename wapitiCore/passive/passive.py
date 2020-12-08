@@ -88,6 +88,18 @@ COMMON_ANNOYING_PARAMETERS = (
 #         )
 
 
+class Result:
+    """This class is what every passive module should return for its output
+       to be correctly used by Wapiti"""
+
+    def __init__(self, content, category, page, level = 1, type = "text"):
+        self.type = type
+        self.content = content
+        self.category = category
+        self.level = level
+        self.page = page
+
+
 class Analysis:
     """This class represents an analysis, it must be extended for any class
     which implements a new type of passive analysis"""
@@ -183,8 +195,6 @@ class Analysis:
         except RequestException:
             pass
         return False
-
-
 
 # if __name__ == "__main__":
 #
