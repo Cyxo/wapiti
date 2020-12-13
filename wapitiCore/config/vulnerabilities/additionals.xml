@@ -84,4 +84,14 @@
             </reference>
         </references>
     </additional>
+    <additional name="Dead Resource">
+        <description>Resource no longer existing or accessible that may be abused (e.g. second-order subdomain takeovers)</description>
+        <solution text="Update or remove links"/>
+        <references>
+	    <reference>
+	        <title><![CDATA[WSTG-CONF-10: Test for Subdomain Takeover]]></title>
+	        <url>https://owasp.org/www-project-web-security-testing-guide/v41/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/10-Test_for_Subdomain_Takeover</url>
+	    </reference>
+	</references>
+    </additional>
 </additionals>
