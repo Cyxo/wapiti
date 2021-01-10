@@ -1,12 +1,12 @@
 ../attack/attack.py
 ../attack/mod_backup.py
+../attack/mod_brute_login_form.py
 ../attack/mod_blindsql.py
 ../attack/mod_buster.py
 ../attack/mod_cookieflags.py
 ../attack/mod_crlf.py
 ../attack/mod_csp.py
 ../attack/mod_csrf.py
-../attack/mod_delay.py
 ../attack/mod_exec.py
 ../attack/mod_file.py
 ../attack/mod_htaccess.py
