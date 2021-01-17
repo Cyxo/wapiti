@@ -1,5 +1,6 @@
 from wapitiCore.passive.passive import Analysis, Result
 from wapitiCore.language.vulnerability import _, Additional
+from urllib.parse import urlparse
 import requests
 import socket
 import dns, dns.resolver
@@ -23,14 +24,15 @@ class mod_dead_resource(Analysis) :
     
     def test_dns_resolution(self, url):
         """This function return 0 for DNS error such as no valid record or DNS failure, 1 if it determines the DNS query name does not exist, 2 for valid IP resolution"""
+        name = urlparse(url).netloc
         try :
-            dns.resolver.resolve(url, 'A')
+            dns.resolver.resolve(name, 'A')
         except dns.resolver.NXDOMAIN :
             return 1
 # In case there is no IPv4 DNS answer, try IPv6 
         except dns.resolver.NoAnswer :
             try :
-                dns.resolver.resolve(url, 'AAAA')
+                dns.resolver.resolve(name, 'AAAA')
             except :
                 return 0
         except :
