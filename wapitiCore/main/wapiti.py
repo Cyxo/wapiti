@@ -369,7 +369,11 @@ class Wapiti:
 
                     for result in generator:
                         if result.type == "url":
-                            print("We need the Explorer to also browse {}".format(result.content))
+                            if result.content:
+                                explorer.to_explore.append(result.content)
+                            else:
+                                req = Request(path=result.page, link_depth=resource.link_depth + 1)
+                                explorer.to_explore.append(req)
                         elif result.type == "additional":
                             self.report_gen.add_additional(
                                 category=result.category,

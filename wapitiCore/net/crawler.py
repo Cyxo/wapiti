@@ -1422,6 +1422,7 @@ class Explorer:
         self._file_counts = defaultdict(int)
         self._pattern_counts = defaultdict(int)
         self._hostnames = set()
+        self._to_explore = deque()
 
     @property
     def max_depth(self) -> int:
@@ -1478,6 +1479,14 @@ class Explorer:
     @qs_limit.setter
     def qs_limit(self, value: int):
         self._qs_limit = value
+    
+    @property
+    def to_explore(self) -> deque:
+        return self._to_explore
+    
+    @to_explore.setter
+    def to_explore(self, value: deque):
+        self._to_explore = value
 
     def load_saved_state(self, pickle_file: str):
         with open(pickle_file, "wb") as file_data:
@@ -1522,7 +1531,6 @@ class Explorer:
         @rtype: generator
         """
         # explored_urls = []
-        to_explore = deque()
         invalid_page = "zqxj{0}.html".format("".join([choice(ascii_letters) for __ in range(10)]))
 
         # Common params used for tracking or other stuff
@@ -1536,18 +1544,18 @@ class Explorer:
             try:
                 start_url = urls.popleft()
                 if isinstance(start_url, web.Request):
-                    to_explore.append(start_url)
+                    self.to_explore.append(start_url)
                 else:
                     # We treat start_urls as if they are all valid URLs (ie in scope)
-                    to_explore.append(web.Request(start_url, link_depth=0))
+                    self.to_explore.append(web.Request(start_url, link_depth=0))
             except IndexError:
                 break
 
-        for request in to_explore:
+        for request in self.to_explore:
             urls.append(request)
 
         # This is only for semantic
-        to_explore = urls
+        self.to_explore = urls
 
         self._crawler._session.stream = True
 
@@ -1572,78 +1580,86 @@ class Explorer:
         def is_forbidden(candidate_url):
             return any(regex.match(candidate_url) for regex in regexes)
 
-        while to_explore:
-            request = to_explore.popleft()
-            resource_url = request.url
-            is_excluded = False
-
-            if request.link_depth > self._max_depth:
-                continue
-
-            dir_name = request.dir_name
-            if self._max_files_per_dir and self._file_counts[dir_name] >= self._max_files_per_dir:
-                continue
-
-            # Won't enter if qs_limit is 0 (aka insane mode)
-            if self._qs_limit:
-                if len(request):
-                    try:
-                        if self._pattern_counts[
-                            request.pattern
-                        ] >= 220 / (math.exp(len(request) * self._qs_limit) ** 2):
+        while self.to_explore:
+            request = self.to_explore.popleft()
+            
+            if isinstance(request, web.Request):
+                resource_url = request.url
+                is_excluded = False
+    
+                if request.link_depth > self._max_depth:
+                    continue
+    
+                dir_name = request.dir_name
+                if self._max_files_per_dir and self._file_counts[dir_name] >= self._max_files_per_dir:
+                    continue
+    
+                # Won't enter if qs_limit is 0 (aka insane mode)
+                if self._qs_limit:
+                    if len(request):
+                        try:
+                            if self._pattern_counts[
+                                request.pattern
+                            ] >= 220 / (math.exp(len(request) * self._qs_limit) ** 2):
+                                continue
+                        except OverflowError:
+                            # Oh boy... that's not good to try to attack a form with more than 600 input fields
+                            # but I guess insane mode can do it as it is insane
                             continue
-                    except OverflowError:
-                        # Oh boy... that's not good to try to attack a form with more than 600 input fields
-                        # but I guess insane mode can do it as it is insane
-                        continue
-
-            if is_forbidden(resource_url):
-                continue
-
-            for known_resource in excluded_requests:
-                if known_resource == request:
-                    is_excluded = True
-                    break
-
-            if is_excluded:
-                continue
-
-            if self._log:
-                print("[+] {0}".format(request))
-
-            if dir_name not in self._custom_404_codes:
-                invalid_resource = web.Request(dir_name + invalid_page)
+    
+                if is_forbidden(resource_url):
+                    continue
+    
+                for known_resource in excluded_requests:
+                    if known_resource == request:
+                        is_excluded = True
+                        break
+    
+                if is_excluded:
+                    continue
+    
+                if self._log:
+                    print("[+] {0}".format(request))
+    
+                if dir_name not in self._custom_404_codes:
+                    invalid_resource = web.Request(dir_name + invalid_page)
+                    try:
+                        page = self._crawler.get(invalid_resource)
+                        self._custom_404_codes[dir_name] = page.status
+                    except RequestException:
+                        pass
+    
+                self._hostnames.add(request.hostname)
+    
                 try:
-                    page = self._crawler.get(invalid_resource)
-                    self._custom_404_codes[dir_name] = page.status
-                except RequestException:
-                    pass
+                    page = self._crawler.send(request)
+                except (TypeError, UnicodeDecodeError) as exception:
+                    print("{} with url {}".format(exception, resource_url))  # debug
+                    continue
+                except SSLError:
+                    print(_("[!] SSL/TLS error occurred with URL"), resource_url)
+                    continue
+                # TODO: what to do of connection errors ? sleep a while before retrying ?
+                except ConnectionError:
+                    print(_("[!] Connection error with URL"), resource_url)
+                    continue
+                except RequestException as error:
+                    print(_("[!] {} with url {}").format(error.__class__.__name__, resource_url))
+                    continue
 
-            self._hostnames.add(request.hostname)
+            elif isinstance(request, Page):
+                page = request
+                request = web.Request(page.base_url)
+            else:
+                continue
 
-            try:
-                page = self._crawler.send(request)
-            except (TypeError, UnicodeDecodeError) as exception:
-                print("{} with url {}".format(exception, resource_url))  # debug
-                continue
-            except SSLError:
-                print(_("[!] SSL/TLS error occurred with URL"), resource_url)
-                continue
-            # TODO: what to do of connection errors ? sleep a while before retrying ?
-            except ConnectionError:
-                print(_("[!] Connection error with URL"), resource_url)
-                continue
-            except RequestException as error:
-                print(_("[!] {} with url {}").format(error.__class__.__name__, resource_url))
-                continue
+            excluded_urls.append(request)
 
             if self._max_files_per_dir:
                 self._file_counts[dir_name] += 1
 
             if self._qs_limit and len(request):
                 self._pattern_counts[request.pattern] += 1
-
-            excluded_urls.append(request)
 
             # Sur les ressources statiques le content-length est généralement indiqué
             if self._max_page_size > 0:
@@ -1694,8 +1710,8 @@ class Explorer:
                         else:
                             form.link_depth = request.link_depth + 1
 
-                        if form not in excluded_urls and form not in to_explore:
-                            to_explore.append(form)
+                        if form not in excluded_urls and form not in self.to_explore:
+                            self.to_explore.append(form)
 
             for url in swf_links + js_links:
                 if url:
@@ -1750,8 +1766,8 @@ class Explorer:
                 if new_url.hostname not in self._hostnames:
                     new_url.link_depth = 0
 
-                if new_url not in excluded_urls and new_url not in to_explore:
-                    to_explore.append(new_url)
+                if new_url not in excluded_urls and new_url not in self.to_explore:
+                    self.to_explore.append(new_url)
                     accepted_urls += 1
 
                 if self._max_per_depth and accepted_urls >= self._max_per_depth:

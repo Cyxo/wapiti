@@ -6,7 +6,7 @@ from wapitiCore.main import wapiti
 import os
 import re
 
-class mod_osint(Analysis):
+class mod_listener(Analysis):
     """This class implements a module to retrive and execute event listeners"""
 
     name = "listener"
@@ -34,3 +34,5 @@ class mod_osint(Analysis):
         node_ID = driver.execute_cdp_cmd("DOM.getDocument", {})["root"]["nodeId"]
         object_ID = driver.execute_cdp_cmd("DOM.resolveNode", {"nodeId": node_ID, "objectGroup":"provided"})['object']['objectId']
         listeners = driver.execute_cdp_cmd("DOMDebugger.getEventListeners", {"objectId": object_ID, "depth":-1})['listeners']
+
+        print(listeners)
