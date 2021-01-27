@@ -43,6 +43,9 @@ class mod_listener(Analysis):
 
             log = self.driver.get_log("performance")
             messages = [l["message"] for l in log]
+
+            print("Analysing JS on page", page.url)
+
             for m in messages:
                 if '"Network.responseReceived"' in m:
                     m = json.loads(m)
@@ -50,7 +53,7 @@ class mod_listener(Analysis):
                     url = r["url"]
                     mime = r["mimeType"]
 
-                    if not url in self.urls and mime.startswith(MIME_TEXT_TYPES):
+                    if not url in self.urls and not 'image' in mime:# and mime.startswith(MIME_TEXT_TYPES):
                         self.urls.append(url)
                         yield Result(None, None, url, type="url")
 
@@ -93,6 +96,6 @@ class mod_listener(Analysis):
                         url = r["url"]
                         mime = r["mimeType"]
 
-                        if not url in self.urls and mime.startswith(MIME_TEXT_TYPES):
+                        if not url in self.urls and not 'image' in mime:# and mime.startswith(MIME_TEXT_TYPES):
                             self.urls.append(url)
                             yield Result(None, None, url, type="url")
