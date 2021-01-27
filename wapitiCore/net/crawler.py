@@ -1649,7 +1649,7 @@ class Explorer:
 
             elif isinstance(request, Page):
                 page = request
-                request = web.Request(page.base_url)
+                request = web.Request(page.url)
             else:
                 continue
 
